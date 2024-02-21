@@ -1,0 +1,44 @@
+h1 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.header-container {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1% 3%;
+  border-bottom: 2px solid #ffbf46;
+}
+
+.auth-container {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.user {
+  font-family: monospace;
+  font-weight: bold;
+  color: ghostwhite;
+  width: auto;
+}
+
+.auth-button {
+  background-color: #ffbf46;
+  border: 2px solid #8a4fff;
+  border-radius: 5px;
+  padding: 5px;
+  font-size: 1.2rem;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+.auth-button:hover {
+  cursor: pointer;
+  opacity: 0.6;
+}
