@@ -3,10 +3,6 @@ body {
   font-family: monospace;
  }
  
- header {
-  border-bottom: 2px solid #ffbf46;
- }
- 
  h1 {
   text-align: center;
   color: #8a4fff;
