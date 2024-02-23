@@ -25,3 +25,10 @@ label {
   cursor: pointer;
   opacity: 0.6;
 }
+
+.login-message {
+  text-align: center;
+  font-family: monospace;
+  font-weight: bold;
+  color: ghostwhite;
+}

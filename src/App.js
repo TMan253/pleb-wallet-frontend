@@ -1,8 +1,8 @@
-// https://tinyurl.com/pleb-wallet-react
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 //import {config} from 'dotenv';
+import { axiosWithAuth } from "./utils/axiosWithAuth";
+import Header from "./components/Header";
 import Transactions from "./components/Transactions";
 import Buttons from "./components/Buttons";
 import Chart from "./components/Chart";
@@ -12,11 +12,31 @@ import "./App.css";
 //config();
 
 function App() {
-  const apiKey = process.env.REACT_APP_API_KEY;
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
   const [price, setPrice] = useState(null);
   const [balance, setBalance] = useState(0.0);
+  const [user, setUser] = useState(null);
+  const [channelBalance, setChannelBalance] = useState(0.0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [chartData, setChartData] = useState(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("token");
+    // If user is logged in, get user info
+    if (token) {
+      axiosWithAuth()
+        .get(`${backendUrl}/users/user`)
+        .then((res) => {
+          setIsLoggedIn(true);
+          setUser(res.data);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+  }, []);
 
   const getPrice = () => {
     // Axios is a library that makes it easy to make http requests
@@ -38,24 +58,26 @@ function App() {
   };
 
   const getWalletBalance = () => {
-    const headers = {
-      "X-Api-Key": apiKey,
-    };
     axios
-      .get("https://legend.lnbits.com/api/v1/wallet", { headers })
+      .get(`${backendUrl}/lightning/balance`)
       .then((res) => {
-        // Divide the balance by 1000 since it is denominated in millisats.
-        setBalance(res.data.balance / 1000);
+        setBalance(res.data.total_balance);
+      })
+      .catch((err) => console.log(err));
+  };
+
+  const getChannelBalance = () => {
+    axios
+      .get(`${backendUrl}/lightning/channelbalance`)
+      .then((res) => {
+        setChannelBalance(res.data.balance);
       })
       .catch((err) => console.log(err));
   };
 
   const getTransactions = () => {
-    const headers = {
-      "X-Api-Key": apiKey,
-    };
     axios
-      .get("https://legend.lnbits.com/api/v1/payments", { headers })
+      .get(`${backendUrl}/lightning/invoices`)
       .then((res) => {
         setTransactions(res.data);
       })
@@ -98,32 +120,40 @@ function App() {
   useEffect(() => {
     getPrice();
     getWalletBalance();
+    getChannelBalance();
     getTransactions();
   }, []);
 
   useEffect(() => {
     // setInterval will run whatever is in the callback function every 5 seconds
     const interval = setInterval(() => {
+      getChannelBalance();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
       getPrice();
       getWalletBalance();
       getTransactions();
-    }, 5000);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="App">
-      <header>
-        <h1>Pleb wallet</h1>
-      </header>
-      <Buttons />
+      <Header isLoggedIn={isLoggedIn} user={user} />
+      <Buttons isLoggedIn={isLoggedIn} user={user} />
       <div className="row">
         <div className="balance-card">
-          <h2>Balance</h2>
-          {/* <p><img src="Satoshi-symbol-small.png"
-                  height="40" width="22"
-                  alt="Satoshi unit symbol" />{balance} sats</p> */}
-          <p>{balance} sats</p>
+          <h2>Balances</h2>
+          <p>On-chain balance:&nbsp; <img src="Satoshi-symbol-small.png"
+                  height={16} width={9} style={{maxWidth:"9px"}}
+                  alt="Satoshi unit symbol" /> {balance}</p>
+          <p>Channel balance:&nbsp; <img src="Satoshi-symbol-small.png"
+                  height={16} width={9} style={{maxWidth:"9px"}}
+                  alt="Satoshi unit symbol" /> {channelBalance}</p>
         </div>
         <div className="balance-card">
           <h2>Price</h2>

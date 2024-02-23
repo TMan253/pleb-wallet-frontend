@@ -1,20 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "react-modal";
-import axios from "axios";
+import {QRCodeSVG} from "qrcode.react";
+import {axiosWithAuth} from "../utils/axiosWithAuth";
 import "./PaymentsModal.css";
 
 const customStyles = {
   content: {
-    top: "20%",
+    top: "10%",
     left: "40%",
     right: "40%",
     bottom: "auto",
   },
 };
 
-const PaymentsModal = ({ modalState, setModalState }) => {
-  const apiKey = process.env.REACT_APP_API_KEY;
-
+const PaymentsModal = ({ modalState, setModalState, user }) => {
   // Our state for the info we will send to either generate a new invoice or pay an invoice
   const [formData, setFormData] = useState({
     amount: 0,
@@ -28,47 +27,48 @@ const PaymentsModal = ({ modalState, setModalState }) => {
     checkingId: "",
   });
 
+  // Error state
+  const [error, setError] = useState(null);
+
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
   const handleSend = (e) => {
     // Keep the page from refreshing when the form is submitted
     e.preventDefault();
 
-    const headers = {
-      "X-Api-Key": apiKey,
-    };
     const data = {
-      bolt11: formData.invoiceToPay,
-      out: true,
+      payment_request: formData.invoiceToPay,
+      user_id: user.id,
     };
-    axios
-      .post("https://legend.lnbits.com/api/v1/payments", data, { headers })
-      .then((res) =>
+    axiosWithAuth()
+      .post(`${backendUrl}/lightning/pay`, data)
+      .then((res) => {
         setPaymentInfo({
           paymentHash: res.data.payment_hash,
           checkingId: res.data.checking_id,
-        })
-      )
-      .catch((err) => console.log(err));
+        });
+        // Reload the page to update the balance if the pasyment was successful.
+        window.location.reload();
+      })
+      .catch((err) => setError(err.message));
 
     return;
   };
 
   const handleReceive = (e) => {
-    // Keep the page from refreshing when the form is submitted
+    // Keep the page from refreshing when the form is submitted.
     e.preventDefault();
 
-    const headers = {
-      "X-Api-Key": apiKey,
-    };
     const data = {
-      amount: formData.amount,
-      out: false,
-      // ToDo: Add additional form for user to be able to customize the memo
-      memo: "LNBits",
+      value: formData.amount,
+      // TODO: Add additional form field for user-specified memo.
+      memo: "Demo payment",
+      user_id: user.id,
     };
-    axios
-      .post("https://legend.lnbits.com/api/v1/payments", data, { headers })
+    axiosWithAuth()
+      .post(`${backendUrl}/lightning/invoice`, data)
       .then((res) => setInvoice(res.data.payment_request))
-      .catch((err) => console.log(err));
+      .catch((err) => setError(err.message));
 
     return;
   };
@@ -94,7 +94,7 @@ const PaymentsModal = ({ modalState, setModalState }) => {
     <Modal
       isOpen={modalState.open}
       style={customStyles}
-      contentLabel="Example Modal"
+      contentLabel="Payments Modal"
       appElement={document.getElementById("root")}
     >
       <p
@@ -143,7 +143,7 @@ const PaymentsModal = ({ modalState, setModalState }) => {
         <section>
           <h3>Invoice created</h3>
           <p>{invoice}</p>
-          {/* ToDo: Create a QR code out of this invoice as well */}
+          <QRCodeSVG size={256} width={"100%"} value={invoice} />
         </section>
       )}
       {/* If we are displaying the status of our successful payment */}
@@ -154,7 +154,14 @@ const PaymentsModal = ({ modalState, setModalState }) => {
           <p>Checking id: {paymentInfo.checkingId}</p>
         </section>
       )}
-    </Modal>
+      {/* If we have encountered an error, display its message text */}
+      {error && (
+        <section>
+          <h3>Error</h3>
+          <p>{error}</p>
+        </section>
+      )}
+      </Modal>
   );
 };
 
